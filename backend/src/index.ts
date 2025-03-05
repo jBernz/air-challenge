@@ -7,6 +7,8 @@ import bodyParser from "body-parser"
 
 require('dotenv').config()
 
+console.log(process.env.NODE_ENV)
+
 // Initialize Express app
 const app = express()
 const server = http.createServer(app)
@@ -27,11 +29,11 @@ app.use(
 )
 app.use(bodyParser.json())
 
-console.log(process.env.DATABASE_URL)
-
 // PostgreSQL connection
+const dbUrl = process.env.NODE_ENV === 'test' ? process.env.TEST_DATABASE_URL : process.env.DATABASE_URL
+console.log(dbUrl)
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
+  connectionString: dbUrl,
 })
 
 // Initialize database
