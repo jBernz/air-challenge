@@ -39,52 +39,18 @@ export default function BoardHierarchy() {
     moveBoard({ boardId, newParentId })
   }
 
-  // Function to organize boards into a hierarchical structure
-  const organizeBoards = (boardsArray: Board[]): Board[] => {
-    const boardMap = new Map<string, Board>()
-    const rootBoards: Board[] = []
-
-    // First pass: create a map of all boards
-    boardsArray.forEach((board) => {
-      boardMap.set(board.id, { ...board, children: board.children })
-    })
-
-    // Second pass: organize into hierarchy
-    boardsArray.forEach((board) => {
-      const boardWithChildren = boardMap.get(board.id)!
-
-      if (board.parentId === null) {
-        rootBoards.push(boardWithChildren)
-      } else {
-        const parent = boardMap.get(board.parentId)
-        if (parent) {
-          if (!parent.children) {
-            parent.children = []
-          }
-          parent.children.push(boardWithChildren)
-        } else {
-          // If parent doesn't exist, treat as root
-          rootBoards.push(boardWithChildren)
-        }
-      }
-    })
-
-    return rootBoards
-  }
-
   // Get all boards in a flat array (including nested children)
-  const getAllBoards = (boards: Board[]): Board[] => {
+  const getFlatBoards = (boards: Board[]): Board[] => {
     return boards.reduce((acc: Board[], board) => {
       acc.push(board)
       if (board.children && board.children.length > 0) {
-        acc.push(...getAllBoards(board.children))
+        acc.push(...getFlatBoards(board.children))
       }
       return acc
     }, [])
   }
 
-  const organizedBoards = organizeBoards(boards)
-  const allBoards = getAllBoards(boards)
+  const flatBoards = getFlatBoards(boards)
 
   if (isLoading) {
     return (
@@ -100,7 +66,7 @@ export default function BoardHierarchy() {
 
   return (
     <div className="board-hierarchy">
-      <CreateBoardForm onCreateBoard={handleCreateBoard} boards={allBoards} isCreating={isCreating} />
+      <CreateBoardForm onCreateBoard={handleCreateBoard} boards={flatBoards} isCreating={isCreating} />
 
       <div className="bg-white rounded-md shadow-sm border border-gray-200">
         <div className="p-4 border-b border-gray-200">
@@ -108,18 +74,18 @@ export default function BoardHierarchy() {
         </div>
 
         <div className="p-2">
-          {organizedBoards.length === 0 ? (
+          {boards.length === 0 ? (
             <div className="py-8 text-center text-gray-500">
               No boards found. Create your first board to get started.
             </div>
           ) : (
-            organizedBoards.map((board) => (
+            boards.map((board) => (
               <BoardItem
                 key={board.id}
                 board={board}
                 onDelete={handleDeleteBoard}
                 onMove={handleMoveBoard}
-                allBoards={allBoards}
+                allBoards={flatBoards}
               />
             ))
           )}
