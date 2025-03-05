@@ -94,14 +94,12 @@ and the tests to run for the backend.
 Much of my time was spent working through bugs with things like misaligned keys in data formatting, type mismatches children not rendering, and issues with Node and dependencies. If I were to continue working some things I would do are:
 
 - Add drag and drop to boards
- 
-- Add frontend tests
 
 - Add frontend integration tests
 
 - Remove AI artifacts and extraneous logic
 
-- Get Tests working with Docker
+- Get Tests working with Docker, and add a test env
 
 Please let me know if you have any questions, or if I can provide anything to help you evaluate!
 
