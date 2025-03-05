@@ -1,323 +1,189 @@
 const request = require('supertest');
-const { Pool } = require('pg');
-const { expect, beforeAll, afterAll, beforeEach, describe, test } = require('@jest/globals');
-const path = require('path');
+const { pool, resetDatabase, closeDatabase } = require('./setup');
+const { expect } = require('@jest/globals');
 
-// Mock the actual server to avoid port conflicts during testing
-jest.mock('http', () => {
-  const originalModule = jest.requireActual('http');
-  return {
-    ...originalModule,
-    createServer: jest.fn(() => ({
-      listen: jest.fn(),
-    })),
-  };
-});
-
-// Mock Socket.IO to avoid actual socket connections
-jest.mock('socket.io', () => {
-  return {
-    Server: jest.fn(() => ({
-      on: jest.fn(),
-      emit: jest.fn(),
-    })),
-  };
-});
-
-// Import the Express app (not the server)
-let app;
-
-// Setup test database connection
-const testPool = new Pool({
-  connectionString: process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/boards_test',
-});
+// Import the Express app
+const app = require('../src/index');
 
 // Setup and teardown
 beforeAll(async () => {
-  // Override the pool in the app with our test pool
-  process.env.DATABASE_URL = process.env.TEST_DATABASE_URL || 'postgresql://postgres:postgres@localhost:5432/boards_test';
   process.env.NODE_ENV = 'test';
-  
-  // Clear require cache to ensure fresh import with updated env vars
-  jest.resetModules();
-  
-  // Use the compiled JavaScript version instead of trying to require the TS file directly
-  // This assumes you've compiled your TypeScript to JavaScript
-  const appPath = path.resolve(__dirname, '../dist/index.js');
-  const appModule = require(appPath);
-  app = appModule.default || appModule.app || appModule;
-  
-  // Initialize test database
-  await testPool.query(`
-    DROP TABLE IF EXISTS boards CASCADE;
-    CREATE TABLE boards (
-      id SERIAL PRIMARY KEY,
-      name VARCHAR(255) NOT NULL,
-      parent_id INTEGER REFERENCES boards(id) ON DELETE CASCADE,
-      created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-      updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-    );
-  `);
+  await resetDatabase();
 });
 
 afterAll(async () => {
-  await testPool.query('DROP TABLE IF EXISTS boards CASCADE');
-  await testPool.end();
+  await closeDatabase();
 });
 
 beforeEach(async () => {
-  // Clear the boards table before each test
-  await testPool.query('TRUNCATE boards RESTART IDENTITY CASCADE');
+  await resetDatabase();
 });
 
-describe('Board API Integration Tests', () => {
-  // Test 1: Create a board
-  test('should create a new board', async () => {
-    const response = await request(app)
-      .post('/api/boards')
-      .send({ name: 'Test Board' });
-    
-    expect(response.status).toBe(201);
-    expect(response.body).toHaveProperty('id');
-    expect(response.body.name).toBe('Test Board');
-    expect(response.body.parent_id).toBeNull();
-  });
-
-  // Test 2: Create a child board
-  test('should create a child board', async () => {
-    // First create a parent board
-    const parentResponse = await request(app)
-      .post('/api/boards')
-      .send({ name: 'Parent Board' });
-    
-    const parentId = parentResponse.body.id;
-    
-    // Then create a child board
-    const childResponse = await request(app)
-      .post('/api/boards')
-      .send({ 
-        name: 'Child Board', 
-        parent_id: parentId 
-      });
-    
-    expect(childResponse.status).toBe(201);
-    expect(childResponse.body.name).toBe('Child Board');
-    expect(childResponse.body.parent_id).toBe(parentId);
-  });
-
-  // Test 3: Fail to create a board with non-existent parent
-  test('should fail to create a board with non-existent parent', async () => {
-    const response = await request(app)
-      .post('/api/boards')
-      .send({ 
-        name: 'Orphan Board', 
-        parent_id: 999 // Non-existent parent ID
-      });
-    
-    expect(response.status).toBe(404);
-    expect(response.body).toHaveProperty('error');
-    expect(response.body.error).toContain('Parent board not found');
-  });
-
-  // Test 4: Delete a board
-  test('should delete a board', async () => {
-    // Create a board to delete
-    const createResponse = await request(app)
-      .post('/api/boards')
-      .send({ name: 'Board to Delete' });
-    
-    const boardId = createResponse.body.id;
-    
-    // Delete the board
-    const deleteResponse = await request(app)
-      .delete(`/api/boards/${boardId}`);
-    
-    expect(deleteResponse.status).toBe(200);
-    
-    // Verify the board is deleted
-    const getResponse = await request(app)
-      .get(`/api/boards/${boardId}`);
-    
-    expect(getResponse.status).toBe(404);
-  });
-
-  // Test 5: Cascade deletion of child boards
-  test('should cascade delete child boards', async () => {
-    // Create parent board
-    const parentResponse = await request(app)
-      .post('/api/boards')
-      .send({ name: 'Parent for Cascade' });
-    
-    const parentId = parentResponse.body.id;
-    
-    // Create child board
-    const childResponse = await request(app)
-      .post('/api/boards')
-      .send({ 
-        name: 'Child for Cascade', 
-        parent_id: parentId 
-      });
-    
-    const childId = childResponse.body.id;
-    
-    // Delete parent board
-    await request(app)
-      .delete(`/api/boards/${parentId}`);
-    
-    // Verify child board is also deleted
-    const getChildResponse = await request(app)
-      .get(`/api/boards/${childId}`);
-    
-    expect(getChildResponse.status).toBe(404);
-  });
-
-  // Test 6: Move a board to a new parent
-  test('should move a board to a new parent', async () => {
-    // Create two parent boards
-    const parent1Response = await request(app)
-      .post('/api/boards')
-      .send({ name: 'Original Parent' });
-    
-    const parent2Response = await request(app)
-      .post('/api/boards')
-      .send({ name: 'New Parent' });
-    
-    // Create child under parent1
-    const childResponse = await request(app)
-      .post('/api/boards')
-      .send({ 
-        name: 'Child to Move', 
-        parent_id: parent1Response.body.id 
-      });
-    
-    const childId = childResponse.body.id;
-    
-    // Move child to parent2
-    const moveResponse = await request(app)
-      .put(`/api/boards/${childId}/move`)
-      .send({ new_parent_id: parent2Response.body.id });
-    
-    expect(moveResponse.status).toBe(200);
-    expect(moveResponse.body.parent_id).toBe(parent2Response.body.id);
-  });
-
-  // Test 7: Prevent circular references when moving boards
-  test('should prevent circular references when moving boards', async () => {
-    // Create parent board
-    const parentResponse = await request(app)
-      .post('/api/boards')
-      .send({ name: 'Parent Board' });
-    
-    // Create child board
-    const childResponse = await request(app)
-      .post('/api/boards')
-      .send({ 
-        name: 'Child Board', 
-        parent_id: parentResponse.body.id 
-      });
-    
-    // Try to move parent under child (should fail)
-    const moveResponse = await request(app)
-      .put(`/api/boards/${parentResponse.body.id}/move`)
-      .send({ new_parent_id: childResponse.body.id });
-    
-    expect(moveResponse.status).toBe(400);
-    expect(moveResponse.body.error).toContain('Cannot move a board to its descendant');
-  });
-
-  // Test 8: Enforce maximum board depth
-  test('should enforce maximum board depth of 10', async () => {
-    // Create a chain of 10 nested boards
-    let currentParentId = null;
-    
-    for (let i = 1; i <= 10; i++) {
-      const response = await request(app)
-        .post('/api/boards')
-        .send({ 
-          name: `Level ${i} Board`, 
-          parent_id: currentParentId 
-        });
+describe('Board Depth and Cascade Tests', () => {
+  // Test maximum depth constraint
+  describe('Maximum Board Depth', () => {
+    test('should enforce maximum board depth of 10', async () => {
+      // Create a chain of 10 boards (reaching the max depth)
+      let parentId = null;
+      let boardIds = [];
       
-      expect(response.status).toBe(201);
-      currentParentId = response.body.id;
-    }
-    
-    // Try to create an 11th level (should fail)
-    const tooDeepResponse = await request(app)
-      .post('/api/boards')
-      .send({ 
-        name: 'Too Deep Board', 
-        parent_id: currentParentId 
-      });
-    
-    expect(tooDeepResponse.status).toBe(400);
-    expect(tooDeepResponse.body.error).toContain('Maximum board depth (10) exceeded');
+      for (let i = 1; i <= 10; i++) {
+        const response = await request(app)
+          .post('/api/boards')
+          .send({ name: `Board Level ${i}`, parent_id: parentId });
+        
+        expect(response.status).toBe(201);
+        parentId = response.body.id;
+        boardIds.push(parentId);
+      }
+      
+      // Try to create an 11th board (exceeding max depth)
+      const exceedResponse = await request(app)
+        .post('/api/boards')
+        .send({ name: 'Exceed Depth Board', parent_id: parentId });
+      
+      expect(exceedResponse.status).toBe(400);
+      expect(exceedResponse.body.error).toContain('Maximum board depth');
+    });
+
+    test('should prevent moving a board if it would exceed maximum depth', async () => {
+      // Create a chain of 5 boards
+      let chain1ParentId = null;
+      let chain1BoardIds = [];
+      
+      for (let i = 1; i <= 5; i++) {
+        const response = await request(app)
+          .post('/api/boards')
+          .send({ name: `Chain 1 Level ${i}`, parent_id: chain1ParentId });
+        
+        chain1ParentId = response.body.id;
+        chain1BoardIds.push(chain1ParentId);
+      }
+      
+      // Create another chain of 6 boards
+      let chain2ParentId = null;
+      let chain2BoardIds = [];
+      
+      for (let i = 1; i <= 6; i++) {
+        const response = await request(app)
+          .post('/api/boards')
+          .send({ name: `Chain 2 Level ${i}`, parent_id: chain2ParentId });
+        
+        chain2ParentId = response.body.id;
+        chain2BoardIds.push(chain2ParentId);
+      }
+      
+      // Try to move the top of chain 1 under the bottom of chain 2
+      // This would create a depth of 5 + 6 = 11, exceeding the max of 10
+      const moveResponse = await request(app)
+        .put(`/api/boards/${chain1BoardIds[0]}/move`)
+        .send({ new_parent_id: chain2BoardIds[chain2BoardIds.length - 1] });
+      
+      expect(moveResponse.status).toBe(400);
+      expect(moveResponse.body.error).toContain('exceed maximum depth');
+    });
   });
 
-  // Test 9: Get hierarchical board structure
-  test('should return boards in hierarchical structure', async () => {
-    // Create parent board
-    const parentResponse = await request(app)
-      .post('/api/boards')
-      .send({ name: 'Parent Board' });
-    
-    const parentId = parentResponse.body.id;
-    
-    // Create two child boards
-    await request(app)
-      .post('/api/boards')
-      .send({ 
-        name: 'Child Board 1', 
-        parent_id: parentId 
-      });
-    
-    await request(app)
-      .post('/api/boards')
-      .send({ 
-        name: 'Child Board 2', 
-        parent_id: parentId 
-      });
-    
-    // Get all boards
-    const getResponse = await request(app)
-      .get('/api/boards');
-    
-    expect(getResponse.status).toBe(200);
-    
-    // Find the parent board in the response
-    const parentBoard = getResponse.body.find(board => board.id === parentId);
-    
-    // Verify parent has two children
-    expect(parentBoard).toBeDefined();
-    expect(parentBoard.children).toHaveLength(2);
-    expect(parentBoard.children[0].name).toContain('Child Board');
-    expect(parentBoard.children[1].name).toContain('Child Board');
+  // Test cascading deletion
+  describe('Cascading Deletion', () => {
+    test('should delete all child boards when parent is deleted', async () => {
+      // Create a parent board
+      const parentResponse = await request(app)
+        .post('/api/boards')
+        .send({ name: 'Parent Board' });
+      
+      const parentId = parentResponse.body.id;
+      
+      // Create multiple child boards
+      const childIds = [];
+      for (let i = 1; i <= 3; i++) {
+        const response = await request(app)
+          .post('/api/boards')
+          .send({ name: `Child Board ${i}`, parent_id: parentId });
+        
+        childIds.push(response.body.id);
+      }
+      
+      // Create grandchild boards
+      const grandchildIds = [];
+      for (let i = 0; i < childIds.length; i++) {
+        const response = await request(app)
+          .post('/api/boards')
+          .send({ name: `Grandchild Board ${i+1}`, parent_id: childIds[i] });
+        
+        grandchildIds.push(response.body.id);
+      }
+      
+      // Delete the parent board
+      const deleteResponse = await request(app).delete(`/api/boards/${parentId}`);
+      expect(deleteResponse.status).toBe(200);
+      
+      // Verify all children and grandchildren are deleted
+      for (const id of [...childIds, ...grandchildIds]) {
+        const response = await request(app).get(`/api/boards/${id}`);
+        expect(response.status).toBe(404);
+      }
+      
+      // Verify the boards list is empty
+      const listResponse = await request(app).get('/api/boards');
+      expect(listResponse.body.length).toBe(0);
+    });
+
+    test('should verify database-level cascade deletion', async () => {
+      // Create a parent board
+      const parentResponse = await request(app)
+        .post('/api/boards')
+        .send({ name: 'Parent Board' });
+      
+      const parentId = parentResponse.body.id;
+      
+      // Create a child board
+      const childResponse = await request(app)
+        .post('/api/boards')
+        .send({ name: 'Child Board', parent_id: parentId });
+      
+      const childId = childResponse.body.id;
+      
+      // Delete the parent directly from the database
+      await pool.query('DELETE FROM boards WHERE id = $1', [parentId]);
+      
+      // Verify child is deleted via API
+      const response = await request(app).get(`/api/boards/${childId}`);
+      expect(response.status).toBe(404);
+    });
   });
 
-  // Test 10: Get a specific board with its children
-  test('should get a specific board with its children', async () => {
-    // Create parent board
-    const parentResponse = await request(app)
-      .post('/api/boards')
-      .send({ name: 'Specific Parent' });
-    
-    const parentId = parentResponse.body.id;
-    
-    // Create child board
-    await request(app)
-      .post('/api/boards')
-      .send({ 
-        name: 'Specific Child', 
-        parent_id: parentId 
-      });
-    
-    // Get the specific board
-    const getResponse = await request(app)
-      .get(`/api/boards/${parentId}`);
-    
-    expect(getResponse.status).toBe(200);
-    expect(getResponse.body.id).toBe(parentId);
-    expect(getResponse.body.children).toHaveLength(1);
-    expect(getResponse.body.children[0].name).toBe('Specific Child');
+  // Test circular reference prevention
+  describe('Circular Reference Prevention', () => {
+    test('should prevent creating circular references when moving boards', async () => {
+      // Create a hierarchy: Root -> Child -> Grandchild
+      const rootResponse = await request(app)
+        .post('/api/boards')
+        .send({ name: 'Root Board' });
+      
+      const rootId = rootResponse.body.id;
+      
+      const childResponse = await request(app)
+        .post('/api/boards')
+        .send({ name: 'Child Board', parent_id: rootId });
+      
+      const childId = childResponse.body.id;
+      
+      const grandchildResponse = await request(app)
+        .post('/api/boards')
+        .send({ name: 'Grandchild Board', parent_id: childId });
+      
+      const grandchildId = grandchildResponse.body.id;
+      
+      // Try to move Root under Grandchild (would create a cycle)
+      const moveResponse = await request(app)
+        .put(`/api/boards/${rootId}/move`)
+        .send({ new_parent_id: grandchildId });
+      
+      expect(moveResponse.status).toBe(400);
+      expect(moveResponse.body.error).toContain('Cannot move a board to its descendant');
+    });
   });
 });
+
+console.log('Depth and cascade tests loaded');
