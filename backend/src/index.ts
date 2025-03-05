@@ -342,4 +342,4 @@ server.listen(PORT, () => {
 })
 
 // Export for testing
-module.exports = app;
+export default app;

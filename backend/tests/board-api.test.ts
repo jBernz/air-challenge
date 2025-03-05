@@ -1,9 +1,9 @@
-const request = require('supertest');
-const { pool, resetDatabase, closeDatabase } = require('./setup');
-const { expect } = require('@jest/globals');
+import request from 'supertest';
+import { pool, resetDatabase, closeDatabase } from './setup';
+import { expect, describe, test, beforeAll, afterAll, beforeEach } from '@jest/globals';
 
 // Import the Express app
-const app = require('../src/index');
+import app from '../src/index';
 
 // Setup and teardown
 beforeAll(async () => {
@@ -19,13 +19,25 @@ beforeEach(async () => {
   await resetDatabase();
 });
 
+// Define interfaces for board responses
+interface BoardResponse {
+  id: string;
+  name: string;
+  parent_id: string | null;
+  // Add other properties as needed
+}
+
+interface ErrorResponse {
+  error: string;
+}
+
 describe('Board Depth and Cascade Tests', () => {
   // Test maximum depth constraint
   describe('Maximum Board Depth', () => {
     test('should enforce maximum board depth of 10', async () => {
       // Create a chain of 10 boards (reaching the max depth)
-      let parentId = null;
-      let boardIds = [];
+      let parentId: string | null = null;
+      const boardIds: (string|null)[] = [];
       
       for (let i = 1; i <= 10; i++) {
         const response = await request(app)
@@ -43,13 +55,13 @@ describe('Board Depth and Cascade Tests', () => {
         .send({ name: 'Exceed Depth Board', parent_id: parentId });
       
       expect(exceedResponse.status).toBe(400);
-      expect(exceedResponse.body.error).toContain('Maximum board depth');
+      expect((exceedResponse.body as ErrorResponse).error).toContain('Maximum board depth');
     });
 
     test('should prevent moving a board if it would exceed maximum depth', async () => {
       // Create a chain of 5 boards
-      let chain1ParentId = null;
-      let chain1BoardIds = [];
+      let chain1ParentId: string | null = null;
+      const chain1BoardIds: (string|null)[] = [];
       
       for (let i = 1; i <= 5; i++) {
         const response = await request(app)
@@ -61,8 +73,8 @@ describe('Board Depth and Cascade Tests', () => {
       }
       
       // Create another chain of 6 boards
-      let chain2ParentId = null;
-      let chain2BoardIds = [];
+      let chain2ParentId: string | null = null;
+      const chain2BoardIds: (string|null)[] = [];
       
       for (let i = 1; i <= 6; i++) {
         const response = await request(app)
@@ -80,7 +92,7 @@ describe('Board Depth and Cascade Tests', () => {
         .send({ new_parent_id: chain2BoardIds[chain2BoardIds.length - 1] });
       
       expect(moveResponse.status).toBe(400);
-      expect(moveResponse.body.error).toContain('exceed maximum depth');
+      expect((moveResponse.body as ErrorResponse).error).toContain('exceed maximum depth');
     });
   });
 
@@ -95,7 +107,7 @@ describe('Board Depth and Cascade Tests', () => {
       const parentId = parentResponse.body.id;
       
       // Create multiple child boards
-      const childIds = [];
+      const childIds: string[] = [];
       for (let i = 1; i <= 3; i++) {
         const response = await request(app)
           .post('/api/boards')
@@ -105,7 +117,7 @@ describe('Board Depth and Cascade Tests', () => {
       }
       
       // Create grandchild boards
-      const grandchildIds = [];
+      const grandchildIds: string[] = [];
       for (let i = 0; i < childIds.length; i++) {
         const response = await request(app)
           .post('/api/boards')
@@ -181,7 +193,7 @@ describe('Board Depth and Cascade Tests', () => {
         .send({ new_parent_id: grandchildId });
       
       expect(moveResponse.status).toBe(400);
-      expect(moveResponse.body.error).toContain('Cannot move a board to its descendant');
+      expect((moveResponse.body as ErrorResponse).error).toContain('Cannot move a board to its descendant');
     });
   });
 });
