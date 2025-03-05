@@ -2,6 +2,35 @@
 
 This is a full-stack TypeScript application demonstrating the integration of Express.js backend with Next.js frontend, featuring REST API and WebSocket communication.
 
+## Development
+
+### Development with Docker
+
+```bash
+# Start the development environment
+docker compose -f docker-compose.dev.yml up --build
+
+# Stop the development environment
+docker compose -f docker-compose.dev.yml down
+```
+
+The development environment includes:
+
+- Hot reloading for both frontend and backend
+- Volume mounts for real-time code changes
+- Development-specific configurations
+- Isolated node_modules for each service
+
+**Note about Package Management:** When adding new packages to either frontend or backend, you'll need to rebuild the Docker containers:
+
+```bash
+# 1. Stop the containers
+docker compose -f docker-compose.dev.yml down
+
+# 2. Rebuild and start the containers
+docker compose -f docker-compose.dev.yml up --build
+```
+
 ### Backend Development
 
 ```bash
@@ -72,7 +101,7 @@ Much of my time was spent working through bugs with things like misaligned keys 
 
 - Remove AI artifacts and extraneous logic
 
-- Get Docker working
+- Get Tests working with Docker
 
 Please let me know if you have any questions, or if I can provide anything to help you evaluate!
 
