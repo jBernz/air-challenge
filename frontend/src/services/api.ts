@@ -3,7 +3,10 @@ import type { Board, BoardServer, CreateBoardRequest, MoveBoardRequest } from ".
 const API_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:3001"
 
 const formatData = (board:BoardServer):Board => {
-  return {...board, parentId: board.parent_id, children: board.children ? board.children.map(formatData): []}
+  return {
+    id: board.id, parentId: board.parent_id, 
+    name: board.name,
+    children: board.children ? board.children.map(formatData): []}
 }
 
 export async function fetchBoards(): Promise<Board[]> {
@@ -15,14 +18,10 @@ export async function fetchBoards(): Promise<Board[]> {
 
   const res = (await response.json()).map(formatData)
 
-  console.log(res)
-
   return res;
 }
 
 export async function createBoard(data: CreateBoardRequest): Promise<Board> {
-
-  console.log(data)
   const response = await fetch(`${API_URL}/api/boards`, {
     method: "POST",
     headers: {

@@ -64,8 +64,6 @@ and the tests to run for the backend.
 
 Much of my time was spent working through bugs with things like misaligned keys in data formatting, type mismatches children not rendering, and issues with Node and dependencies. If I were to continue working some things I would do are:
 
-- Separate routes into their own files
-
 - Add drag and drop to boards
  
 - Add frontend tests

@@ -48,8 +48,6 @@ export default function BoardItem({ board, onDelete, onMove, allBoards, level = 
 
   const validMoveTargets = allBoards.filter((b) => !getDescendantIds(board.id).includes(b.id) && b.id !== board.id)
 
-  console.log(board.children)
-
   return (
     <div className="board-item">
       <div

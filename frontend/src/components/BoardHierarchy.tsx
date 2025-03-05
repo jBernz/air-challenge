@@ -72,7 +72,19 @@ export default function BoardHierarchy() {
     return rootBoards
   }
 
+  // Get all boards in a flat array (including nested children)
+  const getAllBoards = (boards: Board[]): Board[] => {
+    return boards.reduce((acc: Board[], board) => {
+      acc.push(board)
+      if (board.children && board.children.length > 0) {
+        acc.push(...getAllBoards(board.children))
+      }
+      return acc
+    }, [])
+  }
+
   const organizedBoards = organizeBoards(boards)
+  const allBoards = getAllBoards(boards)
 
   if (isLoading) {
     return (
@@ -88,7 +100,7 @@ export default function BoardHierarchy() {
 
   return (
     <div className="board-hierarchy">
-      <CreateBoardForm onCreateBoard={handleCreateBoard} boards={boards} isCreating={isCreating} />
+      <CreateBoardForm onCreateBoard={handleCreateBoard} boards={allBoards} isCreating={isCreating} />
 
       <div className="bg-white rounded-md shadow-sm border border-gray-200">
         <div className="p-4 border-b border-gray-200">
@@ -107,7 +119,7 @@ export default function BoardHierarchy() {
                 board={board}
                 onDelete={handleDeleteBoard}
                 onMove={handleMoveBoard}
-                allBoards={boards}
+                allBoards={allBoards}
               />
             ))
           )}
