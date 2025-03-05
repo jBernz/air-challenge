@@ -1,4 +1,4 @@
-# Express Next.js WebSocket Demo with TypeScript
+# Justin's Air Fullstack Challenge
 
 This is a full-stack TypeScript application demonstrating the integration of Express.js backend with Next.js frontend, featuring REST API and WebSocket communication.
 
