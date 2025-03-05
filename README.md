@@ -65,9 +65,13 @@ Much of my time was spent working through bugs with things like misaligned keys 
 and issues with node and packages. If I were to continue working some things I would do are
 
 -Separate routes into their own files
+
 -Add drag and drop to boards
+
 -Fix test config
+
 -Add frontend integration tests
+
 -Remove AI artifacts and extraneous logic
 
 Please let me know if you have any questions, or if I can provide anything to help you evaluate!
