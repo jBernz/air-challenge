@@ -74,32 +74,29 @@ Hello!
 
 This is my Air fullstack challenge.
 
-**I have made updates to fix things like broken test config, and the original upload had a line of code that prevented the backend from running properly. Please feel free to evaluate the initial commit for the code I wrote within the 4 hours!**
+** **I have made updates to fix things like broken test config, and the original upload had a line of code that prevented the backend from running properly. Please feel free to evaluate the initial commit for the code I wrote within the 4 hours!** **
 
 In the past when I have done these challenges where I have significant moving parts and technologies integrated
-I have run into errors getting the pieces to work together. For that reason, this time I took a holistic approach,
-using v0 to generate much of the application.
-
-I have not made an app with this many moving pieces with v0 before, and I will say I still ran into plenty of those 
-kinds of roadblocks. That said, writing the actual functionality and business logic went far faster.
+I have run into time issues caused by errors getting the pieces to work together. For that reason, this time I took a holistic approach, using v0 to generate much of the application, then drilling down into the specifics manually.
 
 For the backend I used the provided Express and added Postgres as a DB. For the frontend I used React Query 
-and the provided Next code. Additionally I used the provided WebSocket hook to invalidate the React Query cache in case of an update from the server. I was able to get all the routes working, and the frontend functionally using all the routes.
+and the provided Next code. Additionally I used the provided WebSocket hook to invalidate the React Query cache in case of an update from the server. It is expected you can create, move, delete boards up to 10 levels deep without worrying about circular dependencies.
 
-I used Jest to write some integration tests for the backend routes.
+I used Jest to write the required integration tests for the backend routes.
 
-I expect to be able to see the required functionality running the backend and frontend locally, 
-and the tests to run for the backend.
+Much of my initial time was spent working through bugs bugs caused by AI hallucination such as type and configuration issues. After spending several hours to polish up, I'm satisfied to leave it here. If I were to continue working, some things I would do are:
 
-Much of my time was spent working through bugs with things like misaligned keys in data formatting, type mismatches children not rendering, and issues with Node and dependencies. If I were to continue working some things I would do are:
+- Add drag and drop for board movement
 
-- Add drag and drop to boards
+- Make board creation form position specific
 
 - Add frontend integration tests
 
 - Remove AI artifacts and extraneous logic
 
 - Get Tests working with Docker, and add a test env
+
+- Add an error State when nesting too deep
 
 Please let me know if you have any questions, or if I can provide anything to help you evaluate!
 
