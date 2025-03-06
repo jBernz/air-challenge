@@ -1,31 +1,12 @@
 "use client"
 
-import { useEffect } from "react"
 import { useBoards } from "@/hooks/useBoard"
-import { useSocket } from "@/hooks/useSocket"
 import BoardItem from "./BoardItem"
 import CreateBoardForm from "./CreateBoardForm"
 import type { Board } from "@/types/board"
 
 export default function BoardHierarchy() {
   const { boards, isLoading, isError, createBoard, deleteBoard, moveBoard, isCreating } = useBoards()
-
-  const socket = useSocket()
-
-  useEffect(() => {
-    if (!socket) return
-
-    const handleBoardUpdate = () => {
-      console.log("Board hierarchy updated via WebSocket")
-      // React Query will handle the refetch
-    }
-
-    socket.on("board:update", handleBoardUpdate)
-
-    return () => {
-      socket.off("board:update", handleBoardUpdate)
-    }
-  }, [socket])
 
   const handleCreateBoard = (name: string, parentId: string | null) => {
     createBoard({ name, parentId })

@@ -16,6 +16,7 @@ import {
   isDescendant, 
   getMaxSubtreeDepth 
 } from "../utils/boardUtils";
+import { BoardEventType, emitBoardEvent } from "../socket";
 
 export default function boardRoutes(io: SocketIOServer) {
   const router = express.Router();
@@ -47,7 +48,7 @@ export default function boardRoutes(io: SocketIOServer) {
       const board = await createBoard(name, parent_id);
 
       // Notify clients about the new board
-      io.emit("board:created", board);
+      emitBoardEvent(io, BoardEventType.CREATED, board);
 
       res.status(201).json(board);
     } catch (error) {
@@ -72,7 +73,7 @@ export default function boardRoutes(io: SocketIOServer) {
       await deleteBoard(boardId);
 
       // Notify clients about the deleted board
-      io.emit("board:deleted", { id: boardId });
+      emitBoardEvent(io, BoardEventType.DELETED, { id: boardId });
 
       res.status(200).json({ message: "Board deleted successfully" });
     } catch (error) {
@@ -125,7 +126,7 @@ export default function boardRoutes(io: SocketIOServer) {
       const updatedBoard = await moveBoard(boardId, new_parent_id);
 
       // Notify clients about the moved board
-      io.emit("board:moved", updatedBoard);
+      emitBoardEvent(io, BoardEventType.MOVED, updatedBoard);
 
       res.status(200).json(updatedBoard);
     } catch (error) {

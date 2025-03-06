@@ -1,6 +1,6 @@
 # Justin's Air Fullstack Challenge
 
-This is a full-stack TypeScript application demonstrating the integration of Express.js backend with Next.js frontend, featuring REST API and WebSocket communication.
+This is a full-stack TypeScript application allowing for the creation, deletion, and movement of nested boards.
 
 ## Development
 
@@ -84,7 +84,7 @@ I have not made an app with this many moving pieces with v0 before, and I will s
 kinds of roadblocks. That said, writing the actual functionality and business logic went far faster.
 
 For the backend I used the provided Express and added Postgres as a DB. For the frontend I used React Query 
-and the provided Next code. I was able to get all the routes working, and the frontend functionally using all the routes.
+and the provided Next code. Additionally I used the provided WebSocket hook to invalidate the React Query cache in case of an update from the server. I was able to get all the routes working, and the frontend functionally using all the routes.
 
 I used Jest to write some integration tests for the backend routes.
 

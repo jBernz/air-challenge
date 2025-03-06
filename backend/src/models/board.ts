@@ -54,3 +54,12 @@ export async function getBoardById(id: number): Promise<Board | null> {
   const result = await pool.query("SELECT * FROM boards WHERE id = $1", [id]);
   return result.rows.length > 0 ? result.rows[0] : null;
 }
+
+// Add this function to the existing board.ts file
+export async function updateBoard(id: number, name: string): Promise<Board> {
+  const result = await pool.query(
+    "UPDATE boards SET name = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING *",
+    [name, id]
+  );
+  return result.rows[0];
+}
